@@ -2,34 +2,26 @@ import { ENV } from "@/env";
 
 export async function apiFetch<T>(
 	path: string,
-	options?: RequestInit,
+	options: RequestInit = {},
 ): Promise<T> {
 	const token = localStorage.getItem("access_token");
-	if (!options) {
-		options = {};
-	}
-	if (!options.headers) {
-		options.headers = {};
-	}
 
-	if (token) {
-		(options.headers as Record<string, string>)["Authorization"] =
-			`Bearer ${token}`;
-	}
-
-	const res = await fetch(`${ENV.VITE_APP_URL_API}${path}`, {
+	const response = await fetch(`${ENV.VITE_APP_URL_API}${path}`, {
+		...options,
 		headers: {
 			"Content-Type": "application/json",
-			...(options?.headers || {}),
+			Authorization: token ? `Bearer ${token}` : "",
+			...(options.headers || {}),
 		},
-		credentials: "include", // se tiver autenticação via cookie
-		...options,
 	});
 
-	if (!res.ok) {
-		const errorBody = await res.text();
-		throw new Error(`Erro ${res.status}: ${errorBody}`);
+	if (!response.ok) {
+		throw new Error(`API request failed with status ${response.status}`);
 	}
 
-	return res.json() as Promise<T>;
+	if (response.status === 204) {
+		return {} as T;
+	}
+
+	return response.json();
 }
