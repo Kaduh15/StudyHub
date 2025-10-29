@@ -4,10 +4,12 @@ from ..models import Turma
 
 
 class TurmaSerializer(serializers.ModelSerializer):
-    treinamento_nome = serializers.CharField(
-        source="treinamento.nome", read_only=True
-    )
+    treinamento_nome = serializers.CharField(source="treinamento.nome", read_only=True)
     total_alunos = serializers.IntegerField(source="matriculas.count", read_only=True)
+
+    link_acesso = serializers.URLField(
+        allow_blank=False, allow_null=True, required=False
+    )
 
     class Meta:
         model = Turma
@@ -29,7 +31,9 @@ class TurmaSerializer(serializers.ModelSerializer):
 
         if data_inicio and data_conclusao and data_conclusao < data_inicio:
             raise serializers.ValidationError(
-                {"data_conclusao": "A data de conclusão deve ser posterior à data de início."}
+                {
+                    "data_conclusao": "A data de conclusão deve ser posterior à data de início."
+                }
             )
 
         return data
