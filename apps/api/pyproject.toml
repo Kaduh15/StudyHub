@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "django>=5.2.7",
+    "django-cors-headers>=4.9.0",
     "djangorestframework>=3.16.1",
     "djangorestframework-simplejwt>=5.5.1",
     "gunicorn>=23.0.0",
@@ -13,6 +14,4 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "django-extensions>=4.1",
-]
+dev = []
