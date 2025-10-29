@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 
 
@@ -27,3 +27,11 @@ class Aluno(models.Model):
 
     def __str__(self):
         return self.nome
+
+    @transaction.atomic
+    def delete(self, using=None, keep_parents=False):
+        user = self.user
+
+        super().delete(using, keep_parents)
+
+        user.delete()

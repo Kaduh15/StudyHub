@@ -20,7 +20,7 @@ class Turma(models.Model):
     data_conclusao = models.DateField(
         null=True, blank=True, verbose_name="Data de Conclusão"
     )
-    link_acesso = models.URLField(null=True, blank=True, verbose_name="Link de Acesso")
+    link_acesso = models.URLField(null=True, verbose_name="Link de Acesso")
 
     class Meta:
         verbose_name = "Turma"
