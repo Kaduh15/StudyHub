@@ -18,12 +18,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from .views.auth import AccessTokenOnlyView
+from .views.auth import AccessTokenOnlyView, is_admin_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     # Autenticação
     path("api/auth/token", AccessTokenOnlyView.as_view(), name="token_obtain_pair"),
+    path("api/auth/is-admin", is_admin_view, name="is_admin"),
     # API da aplicação classroom
     path("api/", include("classroom.urls")),
 ]
