@@ -1,8 +1,20 @@
+import {
+	queryOptions,
+	useMutation,
+	useQueryClient,
+	useSuspenseQueries,
+} from "@tanstack/react-query";
 import { createFileRoute, useLoaderData } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { type getRecursoSchema, getRecursos } from "@/api/recurso";
+import {
+	createRecurso,
+	deleteRecurso,
+	type GetRecursoSchema,
+	getRecursos,
+	updateRecurso,
+} from "@/api/recurso";
 import { getTurmas } from "@/api/turmas";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -25,24 +37,24 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
+const recursoQueryOptions = queryOptions({
+	queryKey: ["recursos"],
+	queryFn: getRecursos,
+});
+
+const turmaQueryOptions = queryOptions({
+	queryKey: ["turmas"],
+	queryFn: getTurmas,
+});
+
 export const Route = createFileRoute("/admin/recursos")({
 	component: RouteComponent,
 	loader: async ({ context }) => {
 		const { queryClient } = context;
 
-		const recursos = await queryClient.fetchQuery({
-			queryKey: ["recursos"],
-			queryFn: getRecursos,
-		});
-		const turmas = await queryClient.fetchQuery({
-			queryKey: ["turmas"],
-			queryFn: getTurmas,
-		});
+		await queryClient.ensureQueryData(recursoQueryOptions);
 
-		return {
-			recursos,
-			turmas,
-		};
+		await queryClient.ensureQueryData(turmaQueryOptions);
 	},
 });
 
@@ -54,32 +66,23 @@ const columns = [
 ];
 
 function RouteComponent() {
-	const { recursos: initialRecursos, turmas: initialTurmas } = useLoaderData({
-		from: "/admin/recursos",
+	const [initialRecursos, initialTurmas] = useSuspenseQueries({
+		queries: [recursoQueryOptions, turmaQueryOptions],
 	});
 
-	const data = initialRecursos.map((r) => {
-		const classItem = initialTurmas.find((t) => t.id === r.turma);
-		return {
-			id: r.id,
-			nome: r.nome,
-			turma_nome: classItem?.nome || "",
-			turma: r.turma,
-			tipo: r.tipo,
-			draft: r.draft ? "Sim" : "Não",
-		};
-	});
+	const queryClient = useQueryClient();
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<any>(null);
+	const [editingItem, setEditingItem] = useState<GetRecursoSchema | null>(null);
 	const [formData, setFormData] = useState({
 		nome: "",
 		turma: 0,
 		turma_nome: "",
+		descricao: "",
 		tipo: "PDF",
 		url: "",
 		acesso_previo: false,
-		draft: false,
+		draft: true,
 	});
 
 	const inputNameId = useId();
@@ -87,8 +90,78 @@ function RouteComponent() {
 	const inputAcessoPrevioId = useId();
 	const inputUrlId = useId();
 
+	const createRecursoMutation = useMutation({
+		mutationFn: createRecurso,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["recursos"] });
+
+			toast.success("Recurso criado com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao criar recurso");
+		},
+	});
+
+	const updateRecursoMutation = useMutation({
+		mutationFn: ({
+			id,
+			data,
+		}: {
+			id: number;
+			data: Partial<{
+				nome: string;
+				turma: number;
+				descricao: string | null;
+				tipo: "PDF" | "VIDEO" | "ZIP";
+				url: string | null;
+				acesso_previo: boolean;
+				draft: boolean;
+			}>;
+		}) =>
+			updateRecurso(id, {
+				nome: data.nome,
+				turma: data.turma,
+				descricao: data.descricao,
+				tipo: data.tipo,
+				acesso_previo: data.acesso_previo,
+				draft: data.draft,
+			}),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["recursos"] });
+
+			toast.success("Recurso atualizado com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao atualizar recurso");
+		},
+	});
+
+	const deleteRecursoMutation = useMutation({
+		mutationFn: deleteRecurso,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["recursos"] });
+
+			toast.success("Recurso deletado com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao deletar recurso");
+		},
+	});
+
+	const data = initialRecursos.data.map((r) => {
+		return {
+			id: r.id,
+			nome: r.nome,
+			turma_nome: r.turma_nome,
+			turma: r.turma,
+			tipo: r.tipo,
+			draft: r.draft ? "Sim" : "Não",
+			acesso_previo: r.acesso_previo,
+		};
+	});
+
 	const handleEdit = (item: Record<string, unknown>) => {
-		const typedItem = item as getRecursoSchema & {
+		const typedItem = item as GetRecursoSchema & {
 			url: string;
 		};
 		setEditingItem(typedItem);
@@ -100,20 +173,40 @@ function RouteComponent() {
 			url: typedItem.url || "",
 			acesso_previo: typedItem.acesso_previo,
 			draft: typedItem.draft,
+			descricao: typedItem.descricao || "",
 		});
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = (item: any) => {
-		// setData(data.filter((d) => d.id !== item.id));
-		toast.success("Recurso deletado com sucesso");
+	const handleDelete = (item: { id: number }) => {
+		deleteRecursoMutation.mutate(item.id);
 	};
 
 	const handleSave = () => {
 		if (editingItem) {
-			toast.success("Recurso atualizado com sucesso");
+			updateRecursoMutation.mutate({
+				id: editingItem.id,
+				data: {
+					nome: formData.nome,
+					turma: formData.turma,
+					tipo: formData.tipo as "PDF" | "VIDEO" | "ZIP",
+					acesso_previo: Boolean(formData.acesso_previo),
+					descricao: formData.descricao,
+					draft:
+						typeof formData.draft === "string"
+							? formData.draft === "Sim"
+							: false,
+				},
+			});
 		} else {
-			toast.success("Recurso criado com sucesso");
+			createRecursoMutation.mutate({
+				nome: formData.nome,
+				turma: formData.turma,
+				tipo: formData.tipo as "PDF" | "VIDEO" | "ZIP",
+				acesso_previo: Boolean(formData.acesso_previo),
+				descricao: formData.descricao,
+				draft: formData.draft,
+			});
 		}
 		setIsDialogOpen(false);
 		setEditingItem(null);
@@ -125,6 +218,7 @@ function RouteComponent() {
 			url: "",
 			acesso_previo: false,
 			draft: false,
+			descricao: "",
 		});
 	};
 
@@ -184,7 +278,7 @@ function RouteComponent() {
 									<SelectValue placeholder="Selecione uma turma" />
 								</SelectTrigger>
 								<SelectContent>
-									{initialTurmas.map((cls) => (
+									{initialTurmas.data.map((cls) => (
 										<SelectItem key={cls.id} value={cls.id.toString()}>
 											{cls.nome}
 										</SelectItem>

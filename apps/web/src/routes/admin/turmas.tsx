@@ -1,8 +1,17 @@
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import {
+	queryOptions,
+	useMutation,
+	useQueryClient,
+	useSuspenseQueries,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getTurmas } from "@/api/turmas";
+import { id } from "zod/v4/locales";
+import { getTreinamentos } from "@/api/treinamentos";
+import { createTurma, deleteTurma, getTurmas, updateTurma } from "@/api/turmas";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,19 +31,23 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { mockClasses, mockTrainings } from "@/data/mock";
+
+const turmaQueryOptions = queryOptions({
+	queryKey: ["turmas"],
+	queryFn: getTurmas,
+});
+
+const treinamentoQueryOptions = queryOptions({
+	queryKey: ["treinamentos"],
+	queryFn: getTreinamentos,
+});
 
 export const Route = createFileRoute("/admin/turmas")({
 	component: RouteComponent,
 	loader: async ({ context }) => {
 		const { queryClient } = context;
 
-		const data = await queryClient.fetchQuery({
-			queryKey: ["turmas"],
-			queryFn: getTurmas,
-		});
-
-		return data;
+		await queryClient.ensureQueryData(turmaQueryOptions);
 	},
 });
 
@@ -46,50 +59,120 @@ const columns = [
 ];
 
 function RouteComponent() {
-	const data = useLoaderData({
-		from: "/admin/turmas",
+	const [turmas, treinamentos] = useSuspenseQueries({
+		queries: [turmaQueryOptions, treinamentoQueryOptions],
 	});
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<any>(null);
+	const [editingItem, setEditingItem] = useState<{
+		id: number;
+		nome: string;
+		treinamento: number;
+		treinamento_nome: string;
+		data_inicio: string;
+		data_conclusao: string;
+		link_acesso: string;
+	} | null>(null);
 	const [formData, setFormData] = useState({
-		name: "",
-		trainingId: "",
-		startDate: "",
-		endDate: "",
-		accessLink: "",
+		nome: "",
+		treinamento: 0,
+		data_inicio: "",
+		data_conclusao: "",
+		link_acesso: "",
 	});
 
-	const handleEdit = (item: any) => {
+	const queryClient = useQueryClient();
+
+	const createTurmaMutation = useMutation({
+		mutationFn: createTurma,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["turmas"] });
+
+			toast.success("Turma criada com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao criar a turma");
+		},
+	});
+
+	const updateTurmaMutation = useMutation({
+		mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateTurma>[1] }) => 
+			updateTurma(id, data),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["turmas"] });
+
+			toast.success("Turma atualizada com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao atualizar a turma");
+		},
+	});
+
+	const deleteTurmaMutation = useMutation({
+		mutationFn: deleteTurma,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["turmas"] });
+
+			toast.success("Turma deletada com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao deletar a turma");
+		},
+	});
+
+	const handleEdit = (item: {
+		id: number;
+		nome: string;
+		treinamento: number;
+		treinamento_nome: string;
+		data_inicio: string;
+		data_conclusao: string;
+		link_acesso: string;
+	}) => {
 		setEditingItem(item);
 		setFormData({
-			name: item.name,
-			trainingId: item.trainingId.toString(),
-			startDate: item.startDate,
-			endDate: item.endDate,
-			accessLink: item.accessLink,
+			nome: item.nome,
+			treinamento: item.treinamento,
+			data_inicio: item.data_inicio,
+			data_conclusao: item.data_conclusao,
+			link_acesso: item.link_acesso,
 		});
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = (item: any) => {
-		toast.success("Turma deletada com sucesso");
+	const handleDelete = (item: { id: number }) => {
+		deleteTurmaMutation.mutate(item.id);
 	};
 
 	const handleSave = () => {
 		if (editingItem) {
-			toast.success("Turma atualizada com sucesso");
+			updateTurmaMutation.mutate({
+				id: editingItem.id,
+				data: {
+					nome: formData.nome,
+					treinamento: formData.treinamento,
+					data_inicio: formData.data_inicio,
+					data_conclusao: formData.data_conclusao,
+					link_acesso: formData.link_acesso || null,
+				},
+			});
 		} else {
-			toast.success("Turma criada com sucesso");
+			createTurmaMutation.mutate({
+				nome: formData.nome,
+				treinamento: formData.treinamento,
+				data_inicio: formData.data_inicio,
+				data_conclusao: formData.data_conclusao,
+				link_acesso: formData.link_acesso || null,
+			});
 		}
 		setIsDialogOpen(false);
 		setEditingItem(null);
 		setFormData({
-			name: "",
-			trainingId: "",
-			startDate: "",
-			endDate: "",
-			accessLink: "",
+			nome: "",
+			treinamento: 0,
+			data_inicio: "",
+			data_conclusao: "",
+			link_acesso: "",
 		});
 	};
 
@@ -111,7 +194,7 @@ function RouteComponent() {
 
 				<DataTable
 					columns={columns}
-					data={data}
+					data={turmas.data}
 					onEdit={handleEdit}
 					onDelete={handleDelete}
 				/>
@@ -129,9 +212,9 @@ function RouteComponent() {
 						<div className="space-y-2">
 							<Label htmlFor="name">Nome</Label>
 							<Input
-								value={formData.name}
+								value={formData.nome}
 								onChange={(e) =>
-									setFormData({ ...formData, name: e.target.value })
+									setFormData({ ...formData, nome: e.target.value })
 								}
 								placeholder="Ex: Turma 2024-01"
 							/>
@@ -139,21 +222,21 @@ function RouteComponent() {
 						<div className="space-y-2">
 							<Label htmlFor="training">Treinamento</Label>
 							<Select
-								value={formData.trainingId}
+								value={formData.treinamento.toString()}
 								onValueChange={(value) =>
-									setFormData({ ...formData, trainingId: value })
+									setFormData({ ...formData, treinamento: Number(value) })
 								}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Selecione um treinamento" />
 								</SelectTrigger>
 								<SelectContent>
-									{mockTrainings.map((training) => (
+									{treinamentos.data.map((treinamento) => (
 										<SelectItem
-											key={training.id}
-											value={training.id.toString()}
+											key={treinamento.id}
+											value={treinamento.id.toString()}
 										>
-											{training.name}
+											{treinamento.nome}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -164,9 +247,9 @@ function RouteComponent() {
 								<Label htmlFor="startDate">Data Início</Label>
 								<Input
 									type="date"
-									value={formData.startDate}
+									value={formData.data_inicio}
 									onChange={(e) =>
-										setFormData({ ...formData, startDate: e.target.value })
+										setFormData({ ...formData, data_inicio: e.target.value })
 									}
 								/>
 							</div>
@@ -174,19 +257,19 @@ function RouteComponent() {
 								<Label htmlFor="endDate">Data Conclusão</Label>
 								<Input
 									type="date"
-									value={formData.endDate}
+									value={formData.data_conclusao}
 									onChange={(e) =>
-										setFormData({ ...formData, endDate: e.target.value })
+										setFormData({ ...formData, data_conclusao: e.target.value })
 									}
 								/>
 							</div>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="accessLink">Link de Acesso</Label>
+							<Label htmlFor="link_acesso">Link de Acesso</Label>
 							<Input
-								value={formData.accessLink}
+								value={formData.link_acesso}
 								onChange={(e) =>
-									setFormData({ ...formData, accessLink: e.target.value })
+									setFormData({ ...formData, link_acesso: e.target.value })
 								}
 								placeholder="https://meet.google.com/..."
 							/>

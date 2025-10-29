@@ -1,8 +1,15 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useLoaderData } from "@tanstack/react-router";
 import { Info, Plus } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { getAlunos } from "@/api/aluno";
+import {
+	type CreateAlunoSchema,
+	createAluno,
+	deleteAluno,
+	getAlunos,
+	updateAluno,
+} from "@/api/aluno";
 import { DataTable } from "@/components/data-table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,6 +23,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+interface Aluno extends Record<string, unknown> {
+	id: number;
+	nome: string;
+	email: string;
+	telefone: string | null;
+}
+
+type AlunoFormData = {
+	nome: string;
+	email: string;
+	telefone: string;
+};
+
+type UpdateAlunoData = Partial<Omit<Aluno, "id">>;
 
 export const Route = createFileRoute("/admin/alunos")({
 	component: RouteComponent,
@@ -38,46 +60,113 @@ const columns = [
 ];
 
 function RouteComponent() {
-	const data = useLoaderData({
-		from: "/admin/alunos",
+	const { data } = useQuery<Aluno[]>({
+		queryKey: ["alunos"],
+		queryFn: getAlunos,
+		initialData: useLoaderData({
+			from: "/admin/alunos",
+			structuralSharing: false,
+		}),
+	});
+
+	const queryClient = useQueryClient();
+
+	const createAlunoMutation = useMutation({
+		mutationFn: createAluno,
+		onSuccess: (data: Aluno) => {
+			queryClient.setQueryData<Aluno[]>(["alunos"], (oldData = []) => {
+				return [...oldData, data];
+			});
+
+			toast.success("Aluno criado com sucesso");
+			toast(`Senha padrão: ${data.nome.toLowerCase().slice(0, 3)}@123`, {
+				description: "Peça para o aluno alterar a senha no primeiro login",
+				duration: 20000,
+			});
+		},
+		onError: (error: Error) => {
+			console.info(error);
+			toast.error("Erro ao criar aluno");
+		},
+	});
+
+	const deleteAlunoMutation = useMutation({
+		mutationFn: deleteAluno,
+		onSuccess: (_, id: number) => {
+			queryClient.setQueryData<Aluno[]>(["alunos"], (oldData = []) => {
+				return oldData.filter((aluno) => aluno.id !== id);
+			});
+
+			toast.success("Aluno deletado com sucesso");
+		},
+		onError: (error: Error) => {
+			console.info(error);
+			toast.error("Erro ao deletar aluno");
+		},
+	});
+
+	const updateAlunoMutation = useMutation({
+		mutationFn: ({ id, aluno }: { id: number; aluno: UpdateAlunoData }) =>
+			updateAluno(id, aluno),
+		onSuccess: (data: Aluno) => {
+			queryClient.setQueryData<Aluno[]>(["alunos"], (oldData = []) => {
+				return oldData.map((aluno) => (aluno.id === data.id ? data : aluno));
+			});
+
+			toast.success("Aluno atualizado com sucesso");
+		},
+		onError: (error: Error) => {
+			console.info(error);
+			toast.error("Erro ao atualizar aluno");
+		},
 	});
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<any>(null);
-	const [formData, setFormData] = useState({
-		name: "",
+	const [editingItem, setEditingItem] = useState<Aluno | null>(null);
+	const [formData, setFormData] = useState<AlunoFormData>({
+		nome: "",
 		email: "",
-		phone: "",
+		telefone: "",
 	});
 
 	const inputNameId = useId();
 	const inputEmailId = useId();
 	const inputPhoneId = useId();
 
-	const handleEdit = (item: any) => {
+	const handleEdit = (item: Aluno) => {
 		setEditingItem(item);
-		setFormData({ name: item.name, email: item.email, phone: item.phone });
+		setFormData({
+			nome: item.nome,
+			email: item.email,
+			telefone: item.telefone ?? "",
+		});
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = (item: any) => {
-		// setData(data.filter((d) => d.id !== item.id));
-		toast.success("Aluno deletado com sucesso");
+	const handleDelete = (item: Aluno) => {
+		deleteAlunoMutation.mutate(item.id);
 	};
 
 	const handleSave = () => {
 		if (editingItem) {
-			// setData(
-			// 	data.map((d) => (d.id === editingItem.id ? { ...d, ...formData } : d)),
-			// );
-			toast.success("Aluno atualizado com sucesso");
+			updateAlunoMutation.mutate({
+				id: editingItem.id,
+				aluno: {
+					email: formData.email,
+					nome: formData.nome,
+					telefone: formData.telefone || null,
+				},
+			});
 		} else {
-			// setData([...data, { id: Date.now(), ...formData }]);
-			toast.success("Aluno criado com sucesso");
+			createAlunoMutation.mutate({
+				email: formData.email,
+				nome: formData.nome,
+				telefone: formData.telefone || null,
+			});
 		}
 		setIsDialogOpen(false);
 		setEditingItem(null);
-		setFormData({ name: "", email: "", phone: "" });
+		setFormData({ nome: "", email: "", telefone: "" });
 	};
 
 	return (
@@ -125,9 +214,9 @@ function RouteComponent() {
 							<Label htmlFor={inputNameId}>Nome</Label>
 							<Input
 								id={inputNameId}
-								value={formData.name}
+								value={formData.nome}
 								onChange={(e) =>
-									setFormData({ ...formData, name: e.target.value })
+									setFormData({ ...formData, nome: e.target.value })
 								}
 								placeholder="Ex: João Silva"
 							/>
@@ -148,9 +237,9 @@ function RouteComponent() {
 							<Label htmlFor={inputPhoneId}>Telefone</Label>
 							<Input
 								id={inputPhoneId}
-								value={formData.phone}
+								value={formData.telefone}
 								onChange={(e) =>
-									setFormData({ ...formData, phone: e.target.value })
+									setFormData({ ...formData, telefone: e.target.value })
 								}
 								placeholder="(11) 98765-4321"
 							/>

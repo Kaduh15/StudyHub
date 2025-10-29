@@ -1,8 +1,19 @@
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import {
+	queryOptions,
+	useMutation,
+	useQueryClient,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { getTreinamentos } from "@/api/treinamentos";
+import {
+	createTreinamento,
+	deleteTreinamento,
+	getTreinamentos,
+	updateTreinamento,
+} from "@/api/treinamentos";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,17 +28,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+const treinamentoQueryOptions = queryOptions({
+	queryKey: ["treinamentos"],
+	queryFn: getTreinamentos,
+});
+
 export const Route = createFileRoute("/admin/treinamentos")({
 	component: RouteComponent,
 	loader: async ({ context }) => {
 		const { queryClient } = context;
 
-		const data = await queryClient.fetchQuery({
-			queryKey: ["treinamentos"],
-			queryFn: getTreinamentos,
-		});
-
-		return data;
+		await queryClient.ensureQueryData(treinamentoQueryOptions);
 	},
 });
 
@@ -37,40 +48,102 @@ const columns = [
 ];
 
 function RouteComponent() {
-	const data = useLoaderData({
-		from: "/admin/treinamentos",
-	});
+	const { data } = useSuspenseQuery(treinamentoQueryOptions);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<any>(null);
-	const [formData, setFormData] = useState({ name: "", description: "" });
+	const [editingItem, setEditingItem] = useState<{
+		id: number;
+		nome: string;
+		descricao: string;
+	} | null>(null);
+	const [formData, setFormData] = useState({ nome: "", descricao: "" });
+
+	const queryClient = useQueryClient();
+
+	const createTreinamentoMutation = useMutation({
+		mutationFn: createTreinamento,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["treinamentos"] });
+
+			toast.success("Treinamento criado com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao criar o treinamento");
+		},
+	});
+
+	const updateTreinamentoMutation = useMutation({
+		mutationFn: ({
+			id,
+			data,
+		}: {
+			id: number;
+			data: Partial<{
+				nome: string;
+				descricao: string | null;
+			}>;
+		}) =>
+			updateTreinamento(id, {
+				nome: data.nome,
+				descricao: data.descricao,
+			}),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["treinamentos"] });
+
+			toast.success("Treinamento atualizado com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao atualizar o treinamento");
+		},
+	});
+
+	const deleteTreinamentoMutation = useMutation({
+		mutationFn: deleteTreinamento,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["treinamentos"] });
+
+			toast.success("Treinamento deletado com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao deletar o treinamento");
+		},
+	});
 
 	const inputNameId = useId();
 	const inputDescriptionId = useId();
 
-	const handleEdit = (item: any) => {
+	const handleEdit = (item: {
+		id: number;
+		nome: string;
+		descricao: string;
+	}) => {
+		console.log("🚀 ~ handleEdit ~ item:", item);
 		setEditingItem(item);
-		setFormData({ name: item.name, description: item.description });
+		setFormData({ nome: item.nome, descricao: item.descricao });
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = (item: any) => {
-		// setData(data.filter((d) => d.id !== item.id));
-		toast.success("Treinamento deletado com sucesso");
+	const handleDelete = (item: { id: number }) => {
+		deleteTreinamentoMutation.mutate(item.id);
 	};
 
 	const handleSave = () => {
 		if (editingItem) {
-          // setData(
-          // 	data.map((d) => (d.id === editingItem.id ? { ...d, ...formData } : d)),
-          // );
-			toast.success("Registro atualizado com sucesso");
+			updateTreinamentoMutation.mutate({
+				id: editingItem.id,
+				data: {
+					nome: formData.nome,
+					descricao: formData.descricao,
+				},
+			});
 		} else {
-			// setData([...data, { id: Date.now(), ...formData }]);
-			toast.success("Registro criado com sucesso");
+			createTreinamentoMutation.mutate({
+				nome: formData.nome,
+				descricao: formData.descricao,
+			});
 		}
 		setIsDialogOpen(false);
 		setEditingItem(null);
-		setFormData({ name: "", description: "" });
+		setFormData({ nome: "", descricao: "" });
 	};
 
 	return (
@@ -112,9 +185,9 @@ function RouteComponent() {
 							<Label htmlFor={inputNameId}>Nome</Label>
 							<Input
 								id={inputNameId}
-								value={formData.name}
+								value={formData.nome}
 								onChange={(e) =>
-									setFormData({ ...formData, name: e.target.value })
+									setFormData({ ...formData, nome: e.target.value })
 								}
 								placeholder="Ex: Python Básico"
 							/>
@@ -123,9 +196,9 @@ function RouteComponent() {
 							<Label htmlFor={inputDescriptionId}>Descrição</Label>
 							<Textarea
 								id={inputDescriptionId}
-								value={formData.description}
+								value={formData.descricao}
 								onChange={(e) =>
-									setFormData({ ...formData, description: e.target.value })
+									setFormData({ ...formData, descricao: e.target.value })
 								}
 								placeholder="Descreva o treinamento"
 								rows={4}
