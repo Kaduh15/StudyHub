@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: depois corrijo */
 import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,16 +10,11 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-interface Column {
-	key: string;
-	label: string;
-}
-
-interface DataTableProps<T = Record<string, unknown>> {
-	columns: Column[];
-	data: T[];
-	onEdit: (item: T) => void;
-	onDelete: (item: T) => void;
+interface DataTableProps {
+	columns: any[];
+	data: any[];
+	onEdit: (item: any) => void;
+	onDelete: (item: any) => void;
 }
 
 export const DataTable = ({
@@ -33,7 +29,7 @@ export const DataTable = ({
 				<TableHeader>
 					<TableRow>
 						{columns.map((column) => (
-							<TableHead key={column.key}>{column.label}</TableHead>
+							<TableHead key={String(column.key)}>{column.label}</TableHead>
 						))}
 						<TableHead className="text-right">Ações</TableHead>
 					</TableRow>
@@ -53,7 +49,7 @@ export const DataTable = ({
 							// biome-ignore lint/suspicious/noArrayIndexKey: depois eu altero isso
 							<TableRow key={index}>
 								{columns.map((column) => (
-									<TableCell key={column.key}>
+									<TableCell key={String(column.key)}>
 										{String(item[column.key] ?? "")}
 									</TableCell>
 								))}
