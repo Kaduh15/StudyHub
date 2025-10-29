@@ -29,17 +29,16 @@ const getRecursoSchema = z.object({
 	atualizado_em: z.coerce.date(),
 });
 
-const createRecursoSchema = getRecursoSchema
-	.omit({
-		id: true,
-		turma_nome: true,
-		tipo_display: true,
-		criado_em: true,
-		atualizado_em: true,
-	});
+const createRecursoSchema = getRecursoSchema.omit({
+	id: true,
+	turma_nome: true,
+	tipo_display: true,
+	criado_em: true,
+	atualizado_em: true,
+});
 
-export type createRecursoSchema = z.infer<typeof createRecursoSchema>;
-export type getRecursoSchema = z.infer<typeof getRecursoSchema>;
+export type CreateRecursoSchema = z.infer<typeof createRecursoSchema>;
+export type GetRecursoSchema = z.infer<typeof getRecursoSchema>;
 
 export async function getRecursos() {
 	const data = await apiFetch("/api/recursos");
@@ -47,9 +46,27 @@ export async function getRecursos() {
 	return getRecursoSchema.array().parse(data);
 }
 
-export async function createRecurso(recurso: createRecursoSchema) {
-	const data = await apiFetch("/api/recursos", {
+export async function createRecurso(recurso: CreateRecursoSchema) {
+	const data = await apiFetch("/api/recursos/", {
 		method: "POST",
+		body: JSON.stringify(recurso),
+	});
+
+	return getRecursoSchema.parse(data);
+}
+
+export async function deleteRecurso(id: number) {
+	await apiFetch(`/api/recursos/${id}/`, {
+		method: "DELETE",
+	});
+}
+
+export async function updateRecurso(
+	id: number,
+	recurso: Partial<CreateRecursoSchema>,
+) {
+	const data = await apiFetch(`/api/recursos/${id}/`, {
+		method: "PATCH",
 		body: JSON.stringify(recurso),
 	});
 
