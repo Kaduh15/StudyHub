@@ -2,6 +2,22 @@ import { z } from "zod";
 import { formatDate } from "@/utils/format-date";
 import { apiFetch } from "./client";
 
+const getRecursoTurmaSchema = z.object({
+	id: z.number(),
+	turma: z.number(),
+	turma_nome: z.string(),
+	tipo: z.enum(["PDF", "VIDEO", "ZIP"]),
+	tipo_display: z.enum(["PDF", "Vídeo", "Arquivo ZIP"]),
+	nome: z.string(),
+	descricao: z.string().nullable(),
+	acesso_previo: z.boolean(),
+	draft: z.boolean(),
+	criado_em: z.coerce.date(),
+	atualizado_em: z.coerce.date(),
+});
+
+export type GetRecursoTurmaSchema = z.infer<typeof getRecursoTurmaSchema>;
+
 const getTurmaSchema = z.object({
 	id: z.number(),
 	treinamento: z.number(),
@@ -31,6 +47,12 @@ export async function getTurmas() {
 	return getTurmaSchema.array().parse(data);
 }
 
+export async function getTurmaById(id: number) {
+	const data = await apiFetch(`/api/turmas/${id}/`);
+
+	return getTurmaSchema.parse(data);
+}
+
 export async function createTurma(turma: CreateTurmaSchema) {
 	const data = await apiFetch("/api/turmas/", {
 		method: "POST",
@@ -54,7 +76,9 @@ export async function updateTurma(
 		turma.data_inicio = new Date(turma.data_inicio).toISOString().split("T")[0];
 	}
 	if (turma.data_conclusao) {
-		turma.data_conclusao = new Date(turma.data_conclusao).toISOString().split("T")[0];
+		turma.data_conclusao = new Date(turma.data_conclusao)
+			.toISOString()
+			.split("T")[0];
 	}
 
 	const data = await apiFetch(`/api/turmas/${id}/`, {
@@ -63,4 +87,10 @@ export async function updateTurma(
 	});
 
 	return getTurmaSchema.parse(data);
+}
+
+export async function getRecursoTurma(turmaId: number) {
+	const data = await apiFetch(`/api/turmas/${turmaId}/recursos/`);
+
+	return getRecursoTurmaSchema.array().parse(data);
 }
