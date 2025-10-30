@@ -4,7 +4,7 @@ import {
 	useQueryClient,
 	useSuspenseQueries,
 } from "@tanstack/react-query";
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
@@ -36,6 +36,39 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+
+type RecursoTipo = "PDF" | "VIDEO" | "ZIP";
+
+type RecursoFormData = {
+	nome: string;
+	turma: number;
+	turma_nome: string;
+	descricao: string;
+	tipo: RecursoTipo;
+	url: string;
+	acesso_previo: boolean;
+	draft: boolean;
+};
+
+type UpdateRecursoData = Partial<{
+	nome: string;
+	turma: number;
+	descricao: string | null;
+	tipo: RecursoTipo;
+	url: string | null;
+	acesso_previo: boolean;
+	draft: boolean;
+}>;
+
+type RecursoTableData = {
+	id: number;
+	nome: string;
+	turma_nome: string;
+	turma: number;
+	tipo: RecursoTipo;
+	draft: string;
+	acesso_previo: boolean;
+};
 
 const recursoQueryOptions = queryOptions({
 	queryKey: ["recursos"],
@@ -74,7 +107,7 @@ function RouteComponent() {
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [editingItem, setEditingItem] = useState<GetRecursoSchema | null>(null);
-	const [formData, setFormData] = useState({
+	const [formData, setFormData] = useState<RecursoFormData>({
 		nome: "",
 		turma: 0,
 		turma_nome: "",
@@ -103,21 +136,7 @@ function RouteComponent() {
 	});
 
 	const updateRecursoMutation = useMutation({
-		mutationFn: ({
-			id,
-			data,
-		}: {
-			id: number;
-			data: Partial<{
-				nome: string;
-				turma: number;
-				descricao: string | null;
-				tipo: "PDF" | "VIDEO" | "ZIP";
-				url: string | null;
-				acesso_previo: boolean;
-				draft: boolean;
-			}>;
-		}) =>
+		mutationFn: ({ id, data }: { id: number; data: UpdateRecursoData }) =>
 			updateRecurso(id, {
 				nome: data.nome,
 				turma: data.turma,
@@ -148,7 +167,7 @@ function RouteComponent() {
 		},
 	});
 
-	const data = initialRecursos.data.map((r) => {
+	const data: RecursoTableData[] = initialRecursos.data.map((r) => {
 		return {
 			id: r.id,
 			nome: r.nome,
@@ -161,10 +180,10 @@ function RouteComponent() {
 	});
 
 	const handleEdit = (item: Record<string, unknown>) => {
-		const typedItem = item as GetRecursoSchema & {
+		const typedItem = item as RecursoTableData & {
 			url: string;
 		};
-		setEditingItem(typedItem);
+		setEditingItem(typedItem as unknown as GetRecursoSchema);
 		setFormData({
 			nome: typedItem.nome,
 			turma: typedItem.turma,
@@ -172,8 +191,8 @@ function RouteComponent() {
 			tipo: typedItem.tipo,
 			url: typedItem.url || "",
 			acesso_previo: typedItem.acesso_previo,
-			draft: typedItem.draft,
-			descricao: typedItem.descricao || "",
+			draft: typedItem.draft === "Sim",
+			descricao: "",
 		});
 		setIsDialogOpen(true);
 	};
@@ -184,25 +203,25 @@ function RouteComponent() {
 
 	const handleSave = () => {
 		if (editingItem) {
+			console.log("updating");
+			console.log(formData);
+
 			updateRecursoMutation.mutate({
 				id: editingItem.id,
 				data: {
 					nome: formData.nome,
 					turma: formData.turma,
-					tipo: formData.tipo as "PDF" | "VIDEO" | "ZIP",
+					tipo: formData.tipo,
 					acesso_previo: Boolean(formData.acesso_previo),
 					descricao: formData.descricao,
-					draft:
-						typeof formData.draft === "string"
-							? formData.draft === "Sim"
-							: false,
+					draft: formData.draft,
 				},
 			});
 		} else {
 			createRecursoMutation.mutate({
 				nome: formData.nome,
 				turma: formData.turma,
-				tipo: formData.tipo as "PDF" | "VIDEO" | "ZIP",
+				tipo: formData.tipo,
 				acesso_previo: Boolean(formData.acesso_previo),
 				descricao: formData.descricao,
 				draft: formData.draft,
@@ -291,7 +310,7 @@ function RouteComponent() {
 							<Select
 								value={formData.tipo}
 								onValueChange={(value) =>
-									setFormData({ ...formData, tipo: value })
+									setFormData({ ...formData, tipo: value as RecursoTipo })
 								}
 							>
 								<SelectTrigger>

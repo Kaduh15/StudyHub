@@ -1,15 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import {
+	queryOptions,
+	useMutation,
+	useQueryClient,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { Info, Plus } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import {
-	type CreateAlunoSchema,
-	createAluno,
-	deleteAluno,
-	getAlunos,
-	updateAluno,
-} from "@/api/aluno";
+import { createAluno, deleteAluno, getAlunos, updateAluno } from "@/api/aluno";
 import { DataTable } from "@/components/data-table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -39,17 +38,17 @@ type AlunoFormData = {
 
 type UpdateAlunoData = Partial<Omit<Aluno, "id">>;
 
+const alunoQueryOptions = queryOptions({
+	queryKey: ["alunos"],
+	queryFn: getAlunos,
+});
+
 export const Route = createFileRoute("/admin/alunos")({
 	component: RouteComponent,
 	loader: async ({ context }) => {
 		const { queryClient } = context;
 
-		const data = await queryClient.fetchQuery({
-			queryKey: ["alunos"],
-			queryFn: getAlunos,
-		});
-
-		return data;
+		await queryClient.ensureQueryData(alunoQueryOptions);
 	},
 });
 
@@ -60,14 +59,7 @@ const columns = [
 ];
 
 function RouteComponent() {
-	const { data } = useQuery<Aluno[]>({
-		queryKey: ["alunos"],
-		queryFn: getAlunos,
-		initialData: useLoaderData({
-			from: "/admin/alunos",
-			structuralSharing: false,
-		}),
-	});
+	const { data } = useSuspenseQuery(alunoQueryOptions);
 
 	const queryClient = useQueryClient();
 

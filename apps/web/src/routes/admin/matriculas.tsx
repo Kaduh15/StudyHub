@@ -3,13 +3,11 @@ import {
 	useMutation,
 	useQueryClient,
 	useSuspenseQueries,
-	useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { id } from "zod/v4/locales";
 import { getAlunos } from "@/api/aluno";
 import {
 	createMatricula,
@@ -36,6 +34,27 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+
+
+type MatriculaFormData = {
+	id: number;
+	aluno: number;
+	turma: number;
+};
+
+type EditingMatricula = {
+	id: number;
+	aluno: number;
+	turma: number;
+};
+
+type MatriculaTableData = {
+	id: number;
+	aluno: number;
+	turma: number;
+	aluno_nome: string;
+	turma_nome: string;
+};
 
 const matriculaQueryOption = queryOptions({
 	queryKey: ["matriculas"],
@@ -76,12 +95,8 @@ function RouteComponent() {
 	});
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<{
-		id: number;
-		aluno: number;
-		turma: number;
-	} | null>(null);
-	const [formData, setFormData] = useState({
+	const [editingItem, setEditingItem] = useState<EditingMatricula | null>(null);
+	const [formData, setFormData] = useState<MatriculaFormData>({
 		id: 0,
 		aluno: 0,
 		turma: 0,
@@ -93,7 +108,6 @@ function RouteComponent() {
 		mutationFn: createMatricula,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["matriculas"] });
-
 			toast.success("Matrícula criada com sucesso");
 		},
 		onError: () => {
@@ -102,14 +116,13 @@ function RouteComponent() {
 	});
 
 	const updateMatriculaMutation = useMutation({
-		mutationFn: (data: { id: number; aluno: number; turma: number }) =>
+		mutationFn: (data: MatriculaFormData) =>
 			updateMatricula(data.id, {
 				aluno: data.aluno,
 				turma: data.turma,
 			}),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["matriculas"] });
-
 			toast.success("Matrícula atualizada com sucesso");
 		},
 		onError: () => {
@@ -121,7 +134,6 @@ function RouteComponent() {
 		mutationFn: deleteMatricula,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["matriculas"] });
-
 			toast.success("Matrícula deletada com sucesso");
 		},
 		onError: () => {
@@ -129,17 +141,15 @@ function RouteComponent() {
 		},
 	});
 
-	const data = initialMatriculas.data.map((m) => {
-		return {
-			id: m.id,
-			aluno: m.aluno,
-			turma: m.turma,
-			aluno_nome: m.aluno_nome,
-			turma_nome: m.turma_nome,
-		};
-	});
+	const data: MatriculaTableData[] = initialMatriculas.data.map((m) => ({
+		id: m.id,
+		aluno: m.aluno,
+		turma: m.turma,
+		aluno_nome: m.aluno_nome,
+		turma_nome: m.turma_nome,
+	}));
 
-	const handleEdit = (item: { aluno: number; turma: number; id: number }) => {
+	const handleEdit = (item: EditingMatricula) => {
 		setEditingItem(item);
 		setFormData({
 			id: item.id,
@@ -155,11 +165,7 @@ function RouteComponent() {
 
 	const handleSave = () => {
 		if (editingItem) {
-			updateMatriculaMutation.mutate({
-				id: formData.id,
-				aluno: formData.aluno,
-				turma: formData.turma,
-			});
+			updateMatriculaMutation.mutate(formData);
 		} else {
 			createMatriculaMutation.mutate({
 				aluno: formData.aluno,

@@ -3,13 +3,11 @@ import {
 	useMutation,
 	useQueryClient,
 	useSuspenseQueries,
-	useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { id } from "zod/v4/locales";
 import { getTreinamentos } from "@/api/treinamentos";
 import { createTurma, deleteTurma, getTurmas, updateTurma } from "@/api/turmas";
 import { DataTable } from "@/components/data-table";
@@ -31,6 +29,24 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+
+type Turma = {
+	id: number;
+	nome: string;
+	treinamento: number;
+	treinamento_nome: string;
+	data_inicio: string;
+	data_conclusao: string;
+	link_acesso: string;
+};
+
+type TurmaFormData = {
+	nome: string;
+	treinamento: number;
+	data_inicio: string;
+	data_conclusao: string;
+	link_acesso: string;
+};
 
 const turmaQueryOptions = queryOptions({
 	queryKey: ["turmas"],
@@ -64,16 +80,8 @@ function RouteComponent() {
 	});
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<{
-		id: number;
-		nome: string;
-		treinamento: number;
-		treinamento_nome: string;
-		data_inicio: string;
-		data_conclusao: string;
-		link_acesso: string;
-	} | null>(null);
-	const [formData, setFormData] = useState({
+	const [editingItem, setEditingItem] = useState<Turma | null>(null);
+	const [formData, setFormData] = useState<TurmaFormData>({
 		nome: "",
 		treinamento: 0,
 		data_inicio: "",
@@ -96,8 +104,13 @@ function RouteComponent() {
 	});
 
 	const updateTurmaMutation = useMutation({
-		mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateTurma>[1] }) => 
-			updateTurma(id, data),
+		mutationFn: ({
+			id,
+			data,
+		}: {
+			id: number;
+			data: Parameters<typeof updateTurma>[1];
+		}) => updateTurma(id, data),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["turmas"] });
 
@@ -120,15 +133,7 @@ function RouteComponent() {
 		},
 	});
 
-	const handleEdit = (item: {
-		id: number;
-		nome: string;
-		treinamento: number;
-		treinamento_nome: string;
-		data_inicio: string;
-		data_conclusao: string;
-		link_acesso: string;
-	}) => {
+	const handleEdit = (item: Turma) => {
 		setEditingItem(item);
 		setFormData({
 			nome: item.nome,

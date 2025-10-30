@@ -28,6 +28,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+type Treinamento = {
+	id: number;
+	nome: string;
+	descricao: string;
+};
+
+type TreinamentoFormData = {
+	nome: string;
+	descricao: string;
+};
+
+type UpdateTreinamentoParams = {
+	id: number;
+	data: Partial<{
+		nome: string;
+		descricao: string | null;
+	}>;
+};
+
 const treinamentoQueryOptions = queryOptions({
 	queryKey: ["treinamentos"],
 	queryFn: getTreinamentos,
@@ -50,12 +69,11 @@ const columns = [
 function RouteComponent() {
 	const { data } = useSuspenseQuery(treinamentoQueryOptions);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<{
-		id: number;
-		nome: string;
-		descricao: string;
-	} | null>(null);
-	const [formData, setFormData] = useState({ nome: "", descricao: "" });
+	const [editingItem, setEditingItem] = useState<Treinamento | null>(null);
+	const [formData, setFormData] = useState<TreinamentoFormData>({
+		nome: "",
+		descricao: "",
+	});
 
 	const queryClient = useQueryClient();
 
@@ -72,16 +90,7 @@ function RouteComponent() {
 	});
 
 	const updateTreinamentoMutation = useMutation({
-		mutationFn: ({
-			id,
-			data,
-		}: {
-			id: number;
-			data: Partial<{
-				nome: string;
-				descricao: string | null;
-			}>;
-		}) =>
+		mutationFn: ({ id, data }: UpdateTreinamentoParams) =>
 			updateTreinamento(id, {
 				nome: data.nome,
 				descricao: data.descricao,
@@ -111,18 +120,13 @@ function RouteComponent() {
 	const inputNameId = useId();
 	const inputDescriptionId = useId();
 
-	const handleEdit = (item: {
-		id: number;
-		nome: string;
-		descricao: string;
-	}) => {
-		console.log("🚀 ~ handleEdit ~ item:", item);
+	const handleEdit = (item: Treinamento) => {
 		setEditingItem(item);
 		setFormData({ nome: item.nome, descricao: item.descricao });
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = (item: { id: number }) => {
+	const handleDelete = (item: Pick<Treinamento, "id">) => {
 		deleteTreinamentoMutation.mutate(item.id);
 	};
 
