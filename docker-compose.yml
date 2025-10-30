@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: >
+      sh -c "uv run manage.py migrate &&
+             uv run manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "${API_PORT}:8000"
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_CORS_ALLOWED_ORIGINS=${DJANGO_CORS_ALLOWED_ORIGINS}
+      - DJANGO_DEBUG=${DJANGO_DEBUG-False}
+    volumes:
+      - db_data:/app/db
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        - VITE_APP_URL_API=${API_URL}
+    ports:
+      - "${WEB_PORT}:3000"
+    depends_on:
+      - api
+
+volumes:
+  db_data:
