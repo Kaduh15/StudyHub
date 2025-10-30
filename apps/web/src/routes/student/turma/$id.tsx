@@ -1,7 +1,6 @@
 import {
 	queryOptions,
 	useSuspenseQueries,
-	useSuspenseQuery,
 } from "@tanstack/react-query";
 import {
 	createFileRoute,
