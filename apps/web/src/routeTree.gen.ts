@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StudentRouteRouteImport } from './routes/student/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -20,6 +21,11 @@ import { Route as AdminAlunosRouteImport } from './routes/admin/alunos'
 import { Route as StudentDashboardIndexRouteImport } from './routes/student/dashboard/index'
 import { Route as StudentTurmaIdRouteImport } from './routes/student/turma/$id'
 
+const StudentRouteRoute = StudentRouteRouteImport.update({
+  id: '/student',
+  path: '/student',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -61,19 +67,20 @@ const AdminAlunosRoute = AdminAlunosRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const StudentDashboardIndexRoute = StudentDashboardIndexRouteImport.update({
-  id: '/student/dashboard/',
-  path: '/student/dashboard/',
-  getParentRoute: () => rootRouteImport,
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => StudentRouteRoute,
 } as any)
 const StudentTurmaIdRoute = StudentTurmaIdRouteImport.update({
-  id: '/student/turma/$id',
-  path: '/student/turma/$id',
-  getParentRoute: () => rootRouteImport,
+  id: '/turma/$id',
+  path: '/turma/$id',
+  getParentRoute: () => StudentRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/student': typeof StudentRouteRouteWithChildren
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/matriculas': typeof AdminMatriculasRoute
   '/admin/recursos': typeof AdminRecursosRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/student': typeof StudentRouteRouteWithChildren
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/matriculas': typeof AdminMatriculasRoute
   '/admin/recursos': typeof AdminRecursosRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/student': typeof StudentRouteRouteWithChildren
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/matriculas': typeof AdminMatriculasRoute
   '/admin/recursos': typeof AdminRecursosRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/student'
     | '/admin/alunos'
     | '/admin/matriculas'
     | '/admin/recursos'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/student'
     | '/admin/alunos'
     | '/admin/matriculas'
     | '/admin/recursos'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/student'
     | '/admin/alunos'
     | '/admin/matriculas'
     | '/admin/recursos'
@@ -150,13 +162,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  StudentRouteRoute: typeof StudentRouteRouteWithChildren
   AuthLoginRoute: typeof AuthLoginRoute
-  StudentTurmaIdRoute: typeof StudentTurmaIdRoute
-  StudentDashboardIndexRoute: typeof StudentDashboardIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/student': {
+      id: '/student'
+      path: '/student'
+      fullPath: '/student'
+      preLoaderRoute: typeof StudentRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -215,17 +233,17 @@ declare module '@tanstack/react-router' {
     }
     '/student/dashboard/': {
       id: '/student/dashboard/'
-      path: '/student/dashboard'
+      path: '/dashboard'
       fullPath: '/student/dashboard'
       preLoaderRoute: typeof StudentDashboardIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof StudentRouteRoute
     }
     '/student/turma/$id': {
       id: '/student/turma/$id'
-      path: '/student/turma/$id'
+      path: '/turma/$id'
       fullPath: '/student/turma/$id'
       preLoaderRoute: typeof StudentTurmaIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof StudentRouteRoute
     }
   }
 }
@@ -250,12 +268,25 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface StudentRouteRouteChildren {
+  StudentTurmaIdRoute: typeof StudentTurmaIdRoute
+  StudentDashboardIndexRoute: typeof StudentDashboardIndexRoute
+}
+
+const StudentRouteRouteChildren: StudentRouteRouteChildren = {
+  StudentTurmaIdRoute: StudentTurmaIdRoute,
+  StudentDashboardIndexRoute: StudentDashboardIndexRoute,
+}
+
+const StudentRouteRouteWithChildren = StudentRouteRoute._addFileChildren(
+  StudentRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
+  StudentRouteRoute: StudentRouteRouteWithChildren,
   AuthLoginRoute: AuthLoginRoute,
-  StudentTurmaIdRoute: StudentTurmaIdRoute,
-  StudentDashboardIndexRoute: StudentDashboardIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
