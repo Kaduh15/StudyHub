@@ -1,12 +1,9 @@
-import {
-	createFileRoute,
-	redirect,
-	useLoaderData,
-	useNavigate,
-} from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { addDays, isAfter, isWithinInterval, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Calendar, ExternalLink, GraduationCap, LogOut } from "lucide-react";
-import z from "zod";
-import { getAlunos } from "@/api/aluno";
+import { getTurmas } from "@/api/turmas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,74 +14,66 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 
-const checkStudentAuth = () => {
-	const token = localStorage.getItem("access_token");
-	if (!token) {
-		throw redirect({ to: "/auth/login" });
-	}
+interface StudentClass {
+	id: number;
+	name: string;
+	status: string;
+	trainingName: string;
+	startDate: string;
+	endDate: string | null;
+}
 
-	if (z.jwt().safeParse(token).success === false) {
-		localStorage.removeItem("access_token");
-		localStorage.removeItem("role");
-		throw redirect({ to: "/auth/login" });
-	}
-
-	const role = localStorage.getItem("role");
-	if (role === JSON.stringify("admin")) {
-		throw redirect({ to: "/admin/turmas" });
-	}
-};
+const turmaQueryOptions = queryOptions({
+	queryKey: ["studentClasses"],
+	queryFn: getTurmas,
+});
 
 export const Route = createFileRoute("/student/dashboard/")({
 	component: RouteComponent,
-	beforeLoad: async () => {
-		checkStudentAuth();
-	},
 	loader: async ({ context }) => {
 		const { queryClient } = context;
 
-		const data = await queryClient.fetchQuery({
-			queryKey: ["studentDashboardData"],
-			queryFn: getAlunos,
-		});
-
-		return data;
+		await queryClient.ensureQueryData(turmaQueryOptions);
 	},
 });
 
 function RouteComponent() {
+	const { data } = useSuspenseQuery(turmaQueryOptions);
+
 	const navigate = useNavigate();
-	// recuperar os dados do loader
-	const data = useLoaderData({ from: "/student/dashboard/" });
-	console.log(data);
 
-	interface StudentClass {
-		id: number;
-		name: string;
-		status: string;
-		trainingName: string;
-		startDate: string;
-		endDate: string;
-	}
+	const studentClasses: StudentClass[] = data.map((turma) => {
+		const initialDate = parse(turma.data_inicio, "dd/MM/yyyy", new Date(), {
+			locale: ptBR,
+		});
+		const completedDate = turma.data_conclusao
+			? parse(turma.data_conclusao, "dd/MM/yyyy", new Date(), {
+					locale: ptBR,
+				})
+			: addDays(new Date(), 1);
 
-	const studentClasses: StudentClass[] = [
-		{
-			id: 1,
-			name: "Turma de Matemática",
-			status: "Em andamento",
-			trainingName: "Matemática Básica",
-			startDate: "2024-01-15",
-			endDate: "2024-06-15",
-		},
-		{
-			id: 2,
-			name: "Turma de Física",
-			status: "Concluída",
-			trainingName: "Física Fundamental",
-			startDate: "2023-07-01",
-			endDate: "2023-12-01",
-		},
-	];
+		const inProgress = isWithinInterval(new Date(), {
+			start: initialDate,
+			end: completedDate,
+		});
+
+		const completed = isAfter(new Date(), completedDate);
+
+		return {
+			id: turma.id,
+			name: turma.nome,
+			status: inProgress
+				? "Em andamento"
+				: completed
+					? "Concluída"
+					: "Não iniciada",
+			trainingName: turma.treinamento_nome,
+			startDate: initialDate.toLocaleDateString("pt-BR"),
+			endDate:
+				turma.data_conclusao &&
+				new Date(turma.data_conclusao).toLocaleDateString("pt-BR"),
+		};
+	});
 
 	function handleLogout(): void {
 		localStorage.removeItem("access_token");
@@ -160,7 +149,8 @@ function RouteComponent() {
 									<div className="flex items-center gap-2 text-sm text-muted-foreground">
 										<Calendar className="w-4 h-4" />
 										<span>
-											{classItem.startDate} - {classItem.endDate}
+											{classItem.startDate}{" "}
+											{classItem.endDate && `- ${classItem.endDate}`}
 										</span>
 									</div>
 									<Button
