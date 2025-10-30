@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { GraduationCap } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -18,6 +18,22 @@ import { type LoginSchema, loginSchema } from "./-schema";
 
 export const Route = createFileRoute("/auth/login")({
 	component: RouteComponent,
+	loader: async () => {
+		const token = localStorage.getItem("access_token");
+		const role = localStorage.getItem("role");
+
+		if (token && role === "admin") {
+			throw redirect({
+				to: "/admin/treinamentos",
+				replace: true,
+			});
+		} else if (token && role === "user") {
+			throw redirect({
+				to: "/student/dashboard",
+				replace: true,
+			});
+		}
+	},
 });
 
 function RouteComponent() {
@@ -43,10 +59,7 @@ function RouteComponent() {
 				toast.success("Bem-vindo de volta!");
 
 				localStorage.setItem("access_token", res.access);
-				localStorage.setItem(
-					"role",
-					JSON.stringify(res.is_staff ? "admin" : "user"),
-				);
+				localStorage.setItem("role", res.is_staff ? "admin" : "user");
 
 				if (res.is_staff) {
 					router({ to: "/admin/treinamentos" });

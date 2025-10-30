@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
 	BookOpen,
 	FileText,
@@ -19,8 +19,16 @@ const menuItems = [
 ];
 
 export const AdminSidebar = () => {
+	const navigate = useNavigate();
+
 	const handleLogout = () => {
-		window.location.href = "/";
+		localStorage.removeItem("access_token");
+		localStorage.removeItem("role");
+
+		navigate({
+			to: "/auth/login",
+			replace: true,
+		});
 	};
 
 	return (
