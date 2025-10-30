@@ -20,7 +20,28 @@
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"groups": [
+							":NODE:",
+							":PACKAGE:",
+							":ALIAS:",
+							"../**",
+							"./",
+							"@/utils/**",
+							"@/api/**",
+							"@/components/**"
+						],
+						"identifierOrder": "natural"
+					}
+				}
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
