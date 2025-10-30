@@ -1,13 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "./client";
 
-// {
-//  id: number
-//  nome: string
-//  descricao: any
-//  total_matriculas: number
-//}
-
 const getMatriculaSchema = z.object({
 	id: z.number(),
 	aluno: z.number(),
@@ -24,18 +17,36 @@ const createMatriculaSchema = getMatriculaSchema.omit({
 	data_matricula: true,
 });
 
-export type createMatriculaSchema = z.infer<typeof createMatriculaSchema>;
-export type getMatriculaSchema = z.infer<typeof getMatriculaSchema>;
+export type CreateMatriculaSchema = z.infer<typeof createMatriculaSchema>;
+export type GetMatriculaSchema = z.infer<typeof getMatriculaSchema>;
 
 export async function getMatriculas() {
-	const data = await apiFetch("/api/matriculas");
+	const data = await apiFetch("/api/matriculas/");
 
 	return getMatriculaSchema.array().parse(data);
 }
 
-export async function createMatricula(matricula: createMatriculaSchema) {
-	const data = await apiFetch("/api/matriculas", {
+export async function createMatricula(matricula: CreateMatriculaSchema) {
+	const data = await apiFetch("/api/matriculas/", {
 		method: "POST",
+		body: JSON.stringify(matricula),
+	});
+
+	return getMatriculaSchema.parse(data);
+}
+
+export async function deleteMatricula(id: number) {
+	await apiFetch(`/api/matriculas/${id}/`, {
+		method: "DELETE",
+	});
+}
+
+export async function updateMatricula(
+	id: number,
+	matricula: Partial<CreateMatriculaSchema>,
+) {
+	const data = await apiFetch(`/api/matriculas/${id}/`, {
+		method: "PATCH",
 		body: JSON.stringify(matricula),
 	});
 

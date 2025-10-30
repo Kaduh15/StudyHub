@@ -1,9 +1,22 @@
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import {
+	queryOptions,
+	useMutation,
+	useQueryClient,
+	useSuspenseQueries,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { id } from "zod/v4/locales";
 import { getAlunos } from "@/api/aluno";
-import { getMatriculas } from "@/api/matricula";
+import {
+	createMatricula,
+	deleteMatricula,
+	getMatriculas,
+	updateMatricula,
+} from "@/api/matricula";
 import { getTurmas } from "@/api/turmas";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -23,30 +36,32 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { mockClasses, mockEnrollments, mockStudents } from "@/data/mock";
+
+const matriculaQueryOption = queryOptions({
+	queryKey: ["matriculas"],
+	queryFn: getMatriculas,
+});
+
+const alunoQueryOption = queryOptions({
+	queryKey: ["alunos"],
+	queryFn: getAlunos,
+});
+
+const turmaQueryOptions = queryOptions({
+	queryKey: ["turmas"],
+	queryFn: getTurmas,
+});
 
 export const Route = createFileRoute("/admin/matriculas")({
 	component: RouteComponent,
 	loader: async ({ context }) => {
 		const { queryClient } = context;
 
-		const matriculas = await queryClient.fetchQuery({
-			queryKey: ["matriculas"],
-			queryFn: getMatriculas,
-		});
-		const alunos = await queryClient.fetchQuery({
-			queryKey: ["alunos"],
-			queryFn: getAlunos,
-		});
-		const turmas = await queryClient.fetchQuery({
-			queryKey: ["turmas"],
-			queryFn: getTurmas,
-		});
-		return {
-			matriculas,
-			alunos,
-			turmas,
-		};
+		await Promise.all([
+			queryClient.ensureQueryData(matriculaQueryOption),
+			queryClient.ensureQueryData(alunoQueryOption),
+			queryClient.ensureQueryData(turmaQueryOptions),
+		]);
 	},
 });
 
@@ -56,80 +71,104 @@ const columns = [
 ];
 
 function RouteComponent() {
-	const {
-		matriculas: initialMatriculas,
-		alunos: initialAlunos,
-		turmas: initialTurmas,
-	} = useLoaderData({
-		from: "/admin/matriculas",
-	});
-
-	const data = initialMatriculas.map((m) => {
-		const student = initialAlunos.find((a) => a.id === m.aluno);
-		const classItem = initialTurmas.find((t) => t.id === m.turma);
-		return {
-			aluno_nome: student ? student.nome : "Desconhecido",
-			turma_nome: classItem ? classItem.nome : "Desconhecido",
-		};
+	const [initialMatriculas, initialAlunos, initialTurmas] = useSuspenseQueries({
+		queries: [matriculaQueryOption, alunoQueryOption, turmaQueryOptions],
 	});
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<any>(null);
-	const [formData, setFormData] = useState({ studentId: "", classId: "" });
+	const [editingItem, setEditingItem] = useState<{
+		id: number;
+		aluno: number;
+		turma: number;
+	} | null>(null);
+	const [formData, setFormData] = useState({
+		id: 0,
+		aluno: 0,
+		turma: 0,
+	});
 
-	const handleEdit = (item: any) => {
+	const queryClient = useQueryClient();
+
+	const createMatriculaMutation = useMutation({
+		mutationFn: createMatricula,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+
+			toast.success("Matrícula criada com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao criar matrícula");
+		},
+	});
+
+	const updateMatriculaMutation = useMutation({
+		mutationFn: (data: { id: number; aluno: number; turma: number }) =>
+			updateMatricula(data.id, {
+				aluno: data.aluno,
+				turma: data.turma,
+			}),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+
+			toast.success("Matrícula atualizada com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao atualizar matrícula");
+		},
+	});
+
+	const deleteMatriculaMutation = useMutation({
+		mutationFn: deleteMatricula,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+
+			toast.success("Matrícula deletada com sucesso");
+		},
+		onError: () => {
+			toast.error("Erro ao deletar matrícula");
+		},
+	});
+
+	const data = initialMatriculas.data.map((m) => {
+		return {
+			id: m.id,
+			aluno: m.aluno,
+			turma: m.turma,
+			aluno_nome: m.aluno_nome,
+			turma_nome: m.turma_nome,
+		};
+	});
+
+	const handleEdit = (item: { aluno: number; turma: number; id: number }) => {
 		setEditingItem(item);
 		setFormData({
-			studentId: item.studentId.toString(),
-			classId: item.classId.toString(),
+			id: item.id,
+			aluno: item.aluno,
+			turma: item.turma,
 		});
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = (item: any) => {
-		// setData(data.filter((d) => d.id !== item.id));
-		toast.success("Matrícula deletada com sucesso");
+	const handleDelete = (item: { id: number }) => {
+		deleteMatriculaMutation.mutate(item.id);
 	};
 
 	const handleSave = () => {
-		const studentName =
-			mockStudents.find((s) => s.id === parseInt(formData.studentId))?.name ||
-			"";
-		const className =
-			mockClasses.find((c) => c.id === parseInt(formData.classId, 10))?.name ||
-			"";
-
 		if (editingItem) {
-			// setData(
-			// 	data.map((d) =>
-			// 		d.id === editingItem.id
-			// 			? {
-			// 					...d,
-			// 					studentId: parseInt(formData.studentId, 10),
-			// 					classId: parseInt(formData.classId, 10),
-			// 					studentName,
-			// 					className,
-			// 				}
-			// 			: d,
-			// 	),
-			// );
-			toast.success("Matrícula atualizada com sucesso");
+			updateMatriculaMutation.mutate({
+				id: formData.id,
+				aluno: formData.aluno,
+				turma: formData.turma,
+			});
 		} else {
-			// setData([
-			// 	...data,
-			// 	{
-			// 		id: Date.now(),
-			// 		studentId: parseInt(formData.studentId, 10),
-			// 		classId: parseInt(formData.classId, 10),
-			// 		studentName,
-			// 		className,
-			// 	},
-			// ]);
-			toast.success("Matrícula criada com sucesso");
+			createMatriculaMutation.mutate({
+				aluno: formData.aluno,
+				turma: formData.turma,
+			});
 		}
 		setIsDialogOpen(false);
 		setEditingItem(null);
-		setFormData({ studentId: "", classId: "" });
+		setFormData({ aluno: 0, turma: 0, id: 0 });
 	};
 
 	return (
@@ -166,40 +205,40 @@ function RouteComponent() {
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
-							<Label htmlFor="student">Aluno</Label>
+							<Label htmlFor="aluno">Aluno</Label>
 							<Select
-								value={formData.studentId}
+								value={formData.aluno.toString()}
 								onValueChange={(value) =>
-									setFormData({ ...formData, studentId: value })
+									setFormData({ ...formData, aluno: Number(value) })
 								}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Selecione um aluno" />
 								</SelectTrigger>
 								<SelectContent>
-									{mockStudents.map((student) => (
-										<SelectItem key={student.id} value={student.id.toString()}>
-											{student.name}
+									{initialAlunos.data.map((aluno) => (
+										<SelectItem key={aluno.id} value={aluno.id.toString()}>
+											{aluno.nome}
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="class">Turma</Label>
+							<Label htmlFor="turma">Turma</Label>
 							<Select
-								value={formData.classId}
+								value={formData.turma.toString()}
 								onValueChange={(value) =>
-									setFormData({ ...formData, classId: value })
+									setFormData({ ...formData, turma: Number(value) })
 								}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Selecione uma turma" />
 								</SelectTrigger>
 								<SelectContent>
-									{mockClasses.map((cls) => (
-										<SelectItem key={cls.id} value={cls.id.toString()}>
-											{cls.name}
+									{initialTurmas.data.map((turma) => (
+										<SelectItem key={turma.id} value={turma.id.toString()}>
+											{turma.nome}
 										</SelectItem>
 									))}
 								</SelectContent>
