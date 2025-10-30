@@ -1,4 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+	queryOptions,
+	useSuspenseQueries,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
+import {
+	createFileRoute,
+	useNavigate,
+	useParams,
+} from "@tanstack/react-router";
 import {
 	ArrowLeft,
 	Download,
@@ -10,6 +19,7 @@ import {
 	Video,
 } from "lucide-react";
 import { useState } from "react";
+import { getRecursoTurma, getTurmaById } from "@/api/turmas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -19,42 +29,85 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 
+interface VideoRecurso {
+	tipo: string;
+	url: string;
+	nome?: string;
+}
+
+interface turmaItem {
+	nome: string;
+	data_inicial: string;
+	data_conclusao: string | null;
+}
+
+interface Treinamento {
+	nome: string;
+}
+
+const getRecursoTurmaIdQueryOptions = (id: number) =>
+	queryOptions({
+		queryKey: ["recursoTurma", id],
+		queryFn: () => getRecursoTurma(id),
+	});
+
+const getTurmaByIdQueryOptions = (id: number) =>
+	queryOptions({
+		queryKey: ["turmaById", id],
+		queryFn: () => getTurmaById(id),
+	});
+
 export const Route = createFileRoute("/student/turma/$id")({
 	component: RouteComponent,
+	loader: async ({ params, context }) => {
+		const { queryClient } = context;
+		const { id } = params;
+
+		await Promise.all([
+			queryClient.ensureQueryData(getRecursoTurmaIdQueryOptions(Number(id))),
+			queryClient.ensureQueryData(getTurmaByIdQueryOptions(Number(id))),
+		]);
+	},
 });
 
 function RouteComponent() {
+	const { id } = useParams({
+		from: "/student/turma/$id",
+	});
+	const [recursoData, turmaData] = useSuspenseQueries({
+		queries: [
+			getRecursoTurmaIdQueryOptions(Number(id)),
+			getTurmaByIdQueryOptions(Number(id)),
+		],
+	});
+
 	const [isVideoOpen, setIsVideoOpen] = useState(false);
-	const [selectedVideo, setSelectedVideo] = useState<any>(null);
+	const [selectedVideo, setSelectedVideo] = useState<VideoRecurso | null>(null);
 
 	const navigate = useNavigate();
 
-	const classItem = {
-		name: "Turma Exemplo",
-		startDate: "2024-01-01",
-		endDate: "2024-06-30",
+	const TurmaItem: turmaItem = {
+		nome: turmaData.data.nome,
+		data_inicial: turmaData.data.data_inicio,
+		data_conclusao: turmaData.data.data_conclusao,
 	};
 
-	const training = {
-		name: "Treinamento Exemplo",
+	const training: Treinamento = {
+		nome: turmaData.data.treinamento_nome,
 	};
 
-	const classStarted = true; // Change as needed
+	const classStarted = true;
 
-	const availableResources = [
-		{
-			id: 1,
-			name: "Introdução ao Curso",
-			type: "VIDEO",
-			url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-		},
-		{
-			id: 2,
-			name: "Material de Estudo",
-			type: "DOCUMENT",
-			url: "https://example.com/material.pdf",
-		},
-	];
+	const availableResources = recursoData.data
+		.filter(() => true)
+		.map((resource) => {
+			return {
+				id: resource.id,
+				name: resource.nome,
+				type: resource.tipo,
+				url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			};
+		});
 
 	function handleLogout(): void {
 		localStorage.removeItem("access_token");
@@ -62,15 +115,21 @@ function RouteComponent() {
 		navigate({ to: "/auth/login" });
 	}
 
-	function handleResourceClick(resource: { type: string; url: string }): void {
-		if (resource.type === "VIDEO") {
-			setSelectedVideo(resource);
+	function handleResourceClick({
+		tipo,
+		url,
+	}: {
+		tipo: string;
+		url: string;
+	}): void {
+		if (tipo === "VIDEO") {
+			setSelectedVideo({ tipo, url });
 			setIsVideoOpen(true);
 		}
 	}
 
-	function getResourceIcon(type: string): React.ReactNode {
-		switch (type) {
+	function getResourceIcon(tipo: string): React.ReactNode {
+		switch (tipo) {
 			case "VIDEO":
 				return <Video className="w-5 h-5" />;
 			case "PDF":
@@ -82,7 +141,7 @@ function RouteComponent() {
 		}
 	}
 
-	if (!classItem) {
+	if (!TurmaItem) {
 		return (
 			<div className="min-h-screen bg-background flex items-center justify-center">
 				<p className="text-muted-foreground">Turma não encontrada</p>
@@ -122,11 +181,12 @@ function RouteComponent() {
 
 				<div className="mb-8">
 					<h2 className="text-2xl font-bold text-foreground mb-2">
-						{classItem.name}
+						{TurmaItem.nome}
 					</h2>
-					<p className="text-muted-foreground">{training?.name}</p>
+					<p className="text-muted-foreground">{training?.nome}</p>
 					<p className="text-sm text-muted-foreground mt-1">
-						{classItem.startDate} até {classItem.endDate}
+						{TurmaItem.data_inicial}{" "}
+						{TurmaItem.data_conclusao && `até ${TurmaItem.data_conclusao}`}
 					</p>
 				</div>
 
@@ -172,7 +232,12 @@ function RouteComponent() {
 										</div>
 										<Button
 											size="sm"
-											onClick={() => handleResourceClick(resource)}
+											onClick={() =>
+												handleResourceClick({
+													tipo: resource.type,
+													url: resource.url,
+												})
+											}
 										>
 											{resource.type === "VIDEO" ? (
 												<>
@@ -197,15 +262,14 @@ function RouteComponent() {
 			<Dialog open={isVideoOpen} onOpenChange={() => setIsVideoOpen(false)}>
 				<DialogContent className="max-w-4xl">
 					<DialogHeader>
-						<DialogTitle>{selectedVideo?.name}</DialogTitle>
+						<DialogTitle>{selectedVideo?.nome}</DialogTitle>
 					</DialogHeader>
 					<div className="aspect-video w-full">
 						<iframe
 							width="100%"
 							height="100%"
 							src={selectedVideo?.url}
-							title={selectedVideo?.name}
-							frameBorder="0"
+							title={selectedVideo?.nome}
 							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 							allowFullScreen
 							className="rounded-lg"
