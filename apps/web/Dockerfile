@@ -12,10 +12,11 @@ RUN pnpm build
 
 # Stage 2 - Runtime (nginx)
 FROM nginx:stable-alpine AS runner
-WORKDIR /usr/share/nginx/html
 
-# Copia os arquivos compilados
-COPY --from=builder /app/dist .
+# Copia os arquivos buildados para a pasta servida pelo NGINX
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copia a config customizada do NGINX
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
