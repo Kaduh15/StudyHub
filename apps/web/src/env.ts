@@ -1,11 +1,8 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: precisa */
 import { z } from "zod";
 
 export const envSchema = z.object({
 	VITE_APP_URL_API: z.url(),
 });
-console.log("🚀 ~ import.meta.env:", import.meta.env);
 
 export const ENV = envSchema.parse(import.meta.env);
-
 export type EnvSchema = z.infer<typeof envSchema>;
