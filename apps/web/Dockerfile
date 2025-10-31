@@ -1,39 +1,22 @@
+# Stage 1 - Build
 FROM node:22 AS builder
-
-ARG VITE_APP_URL_API
-
-ENV VITE_APP_URL_API=$VITE_APP_URL_API
-
 WORKDIR /app
 
-RUN npm install -g pnpm
+ARG VITE_APP_URL_API
+ENV VITE_APP_URL_API=$VITE_APP_URL_API
 
 COPY package.json ./
-
-RUN pnpm install
-
+RUN npm install -g pnpm && pnpm install
 COPY . .
-
 RUN pnpm build
 
-FROM node:22 AS runner
+# Stage 2 - Runtime (nginx)
+FROM nginx:stable-alpine AS runner
+WORKDIR /usr/share/nginx/html
 
-WORKDIR /app
+# Copia os arquivos compilados
+COPY --from=builder /app/dist .
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-ARG VITE_APP_URL_API
-
-ENV VITE_APP_URL_API=$VITE_APP_URL_API
-
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/node_modules ./node_modules
-
-RUN npm install -g pnpm
-
-RUN pnpm install
-
-COPY --from=builder /app/dist ./dist
-
-EXPOSE 3000
-
-CMD ["pnpm", "serve", "--port", "3000", "--host", "0.0.0.0"]
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
