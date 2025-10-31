@@ -18,7 +18,8 @@ Plataforma simples para gerenciamento de treinamentos, turmas e matrículas, com
 
 ### Como Rodar (Docker)
 ```bash
-cd /home/dev/www/StudyHub
+git clone https://github.com/kaduh15/studyhub
+cd StudyHub
 API_PORT=8000 WEB_PORT=3000 API_URL=http://localhost:8000 \
 DJANGO_SECRET_KEY=dev-secret docker compose up --build
 ```
@@ -41,7 +42,7 @@ Password: ********
 ### Como Rodar (Local, sem Docker)
 API:
 ```bash
-cd /home/dev/www/StudyHub/apps/api
+cd StudyHub/apps/api
 python -m venv .venv && source .venv/bin/activate
 pip install uv && uv sync
 export DJANGO_SECRET_KEY=dev-secret
@@ -50,7 +51,7 @@ uv run manage.py runserver 0.0.0.0:8000
 ```
 Web:
 ```bash
-cd /home/dev/www/StudyHub/apps/web
+cd StudyHub/apps/web
 pnpm install
 VITE_APP_URL_API=http://localhost:8000 pnpm dev --port 3000
 ```
@@ -63,9 +64,9 @@ VITE_APP_URL_API=http://localhost:8000 pnpm dev --port 3000
 
 Copie para `.env` em cada local:
 ```bash
-cp /home/dev/www/StudyHub/env.example /home/dev/www/StudyHub/.env
-cp /home/dev/www/StudyHub/apps/api/env.example /home/dev/www/StudyHub/apps/api/.env
-cp /home/dev/www/StudyHub/apps/web/env.example /home/dev/www/StudyHub/apps/web/.env
+cp StudyHub/env.example /home/dev/www/StudyHub/.env
+cp StudyHub/apps/api/env.example /home/dev/www/StudyHub/apps/api/.env
+cp StudyHub/apps/web/env.example /home/dev/www/StudyHub/apps/web/.env
 ```
 
 ### Autenticação (JWT)
