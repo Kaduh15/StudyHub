@@ -82,12 +82,12 @@ cp StudyHub/apps/web/env.example /home/dev/www/StudyHub/apps/web/.env
 
 ### Demo (se disponível)
 Pode haver uma demo pública em execução. Caso esteja online:
-- Web: `https://demo.studyhub.example` (pode estar offline)
-- API: `https://api.demo.studyhub.example` (pode estar offline)
+- Web: `[Demo](https://studyhub.lebdev.me/)` (pode estar offline)
+- API: `[Demo](https://api.studyhub.lebdev.me/)` (pode estar offline)
 
 Credenciais de teste (se ativas na demo):
-- Admin: `admin / admin123`
-- Aluno: `aluno1 / senha123`
+- Admin: `admin@email.com / 12345678`
+- Aluno: `aluno@email.com / alu@123`
 
 Obs.: A demo pode estar fora do ar a qualquer momento.
 
@@ -102,10 +102,10 @@ flowchart TD
     A[Requisição GET /api/recursos/:id] --> B{Token JWT válido?}
     B -- Não --> B1[401 Unauthorized]
     B -- Sim --> C{Usuário é admin?}
-    C -- Sim --> C1[200 OK\nAcesso total]
-    C -- Não --> D{Método é leitura?\nGET/HEAD/OPTIONS}
+    C -- Sim --> C1[200 OK Acesso total]
+    C -- Não --> D{Método é leitura? GET/HEAD/OPTIONS}
     D -- Não --> D1[403 Forbidden]
-    D -- Sim --> E{Aluno está matriculado\nna turma do recurso?}
+    D -- Sim --> E{Aluno está matriculado na turma do recurso?}
     E -- Não --> E1[403 Forbidden]
     E -- Sim --> F{Hoje < data_inicio da turma?}
     F -- Sim --> G{acesso_previo == True}
