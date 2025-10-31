@@ -1,5 +1,5 @@
 {
-  "name": ".",
+  "name": "web",
   "private": true,
   "type": "module",
   "scripts": {

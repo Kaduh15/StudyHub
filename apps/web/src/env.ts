@@ -5,5 +5,4 @@ export const envSchema = z.object({
 });
 
 export const ENV = envSchema.parse(import.meta.env);
-
 export type EnvSchema = z.infer<typeof envSchema>;

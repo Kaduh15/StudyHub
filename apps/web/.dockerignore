@@ -1,0 +1,50 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.next
+out
+
+# Development
+.git
+.gitignore
+README.md
+.vscode
+.idea
+
+# Environment files
+.env
+.env*.local
+
+# Testing
+coverage
+.nyc_output
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite specific
+.vite
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# pnpm specific
+.pnpm-debug.log
+pnpm-lock.yaml
+
+# Documentation
+docs
+*.md

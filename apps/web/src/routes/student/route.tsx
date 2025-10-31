@@ -2,7 +2,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import z from "zod";
 import { getIsAdmin } from "@/api/admin/get-is-admin";
-import { AdminSidebar } from "@/components/admin-sidebar";
 
 const getValidatedToken = () => {
 	const token = localStorage.getItem("access_token");

@@ -9,8 +9,7 @@ export async function getIsAdmin() {
 		});
 
 		return res;
-	} catch (error) {
-		console.error("Erro ao verificar se o usuário é admin:", error);
+	} catch {
 		toast.error("Erro ao verificar permissões de administrador.");
 		toast.info("Por favor, faça login novamente.");
 		throw redirect({ to: "/auth/login" });

@@ -203,9 +203,6 @@ function RouteComponent() {
 
 	const handleSave = () => {
 		if (editingItem) {
-			console.log("updating");
-			console.log(formData);
-
 			updateRecursoMutation.mutate({
 				id: editingItem.id,
 				data: {

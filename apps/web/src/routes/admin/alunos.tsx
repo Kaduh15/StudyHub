@@ -76,8 +76,7 @@ function RouteComponent() {
 				duration: 20000,
 			});
 		},
-		onError: (error: Error) => {
-			console.info(error);
+		onError: () => {
 			toast.error("Erro ao criar aluno");
 		},
 	});
@@ -91,8 +90,7 @@ function RouteComponent() {
 
 			toast.success("Aluno deletado com sucesso");
 		},
-		onError: (error: Error) => {
-			console.info(error);
+		onError: () => {
 			toast.error("Erro ao deletar aluno");
 		},
 	});
@@ -107,8 +105,7 @@ function RouteComponent() {
 
 			toast.success("Aluno atualizado com sucesso");
 		},
-		onError: (error: Error) => {
-			console.info(error);
+		onError: () => {
 			toast.error("Erro ao atualizar aluno");
 		},
 	});
