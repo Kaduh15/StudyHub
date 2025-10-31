@@ -7,6 +7,10 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/', // <-- caminho base absoluto (importante pro NGINX)
+  build: {
+    outDir: 'dist', // <-- garante que o build vá pra /app/dist
+  },
   plugins: [
     tanstackRouter({
       target: 'react',
